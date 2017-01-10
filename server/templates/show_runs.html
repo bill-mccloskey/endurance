@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block body %}
+  <form action="{{ url_for('show_data') }}" method="get">
+    <h3>Measurements to display</h3>
+    <ul class="all_keys">
+    {% for key in all_keys %}
+      <li><input type="checkbox" name="key" value="{{ key.key }}">{{ key.key }}</input></li>
+    {% else %}
+      <li><em>Unbelievable.  No keys here so far</em></li>
+    {% endfor %}
+    </ul>
+
+    <h3>Test runs to display</h3>
+    <ul class="runs">
+    {% for run in runs %}
+      <li><input type="checkbox" name="run" value="{{ run.key }}">{{ run.start_date }} {{ run.ip }} {{ run.user_agent }}</input></li>
+    {% else %}
+      <li><em>Unbelievable.  No runs here so far</em></li>
+    {% endfor %}
+    </ul>
+    <div class="submit"><input type="submit" value="Graph"></div>
+  </form>
+{% endblock %}

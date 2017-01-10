@@ -1,0 +1,37 @@
+<!doctype html>
+<head>
+  <title>Endurance test</title>
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="plot-body">
+
+{% for message in get_flashed_messages() %}
+<div class="flash">{{ message }}</div>
+{% endfor %}
+
+<script type="text/javascript" src="https://cdn.plot.ly/plotly-latest.js"></script>
+
+{% block body %}
+  <ul class="options">
+  {% for option in options %}
+  <li><input class="option_check" type="checkbox" value="{{ option.selector }}">
+    {{ option.key }} [{{ option.run.start_date }}/{{ option.run.ip }}/{{ option.run.user_agent }}]
+  </input></li>
+  {% else %}
+    <li><em>Unbelievable.  No entries here so far</em></li>
+  {% endfor %}
+  </ul>
+{% endblock %}
+
+<div id="plot" style="width:100%;height:500px;"></div>
+
+<table id="text-entries"></table>
+
+<script type="text/javascript">
+  var TEXT_ENTRIES = {{ text_entries|safe }};
+</script>
+
+<script type="text/javascript" src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>

@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% block body %}
+  <form action="{{ url_for('submit_entries') }}" method="post" class="add-entry">
+    <dl>
+      <dt>Runkey:
+      <dd><input type="text" size="30" name="run_key">
+      <dt>Start date:
+      <dd><input type="text" size="30" name="start_date">
+      <dt>Data
+      <dd><textarea name="data" rows="5" cols="40"></textarea>
+      <dd><input type="submit" value="Submit">
+    </dl>
+  </form>
+{% endblock %}

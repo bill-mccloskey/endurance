@@ -1,6 +1,108 @@
 let testTab = null;
 let testWindow = null;
 let running = false;
+let logEntries = [];
+let runKey = Math.random();
+let startDate;
+
+let lastSubmission = Date.now();
+let lastMemoryReport = Date.now();
+
+function log(...args) {
+  console.log(...args);
+  logEntries.push(args);
+}
+
+function logError(e) {
+  console.log("Exception", e);
+  log(`Exception: ${e}\n${e.stack}`);
+}
+
+async function submit() {
+  console.log("begin submit");
+
+  let stats = await browser.runtime.sendMessage({type: "GetStatistics", hangThreshold: 100});
+
+  let data = [];
+
+  data.push([Date.now(), "log(text)", logEntries.join("\n")]);
+  logEntries = [];
+
+  for (let key in stats[0]) {
+    data.push([Date.now(), key + "-main", stats[0][key]]);
+  }
+  for (let key in stats[0]) {
+    let v = 0;
+    for (let i = 1; i < stats.length; i++) {
+      v += stats[i][key];
+    }
+    data.push([Date.now(), key + "-content", v]);
+  }
+
+  let encoded = new FormData();
+  encoded.append("run_key", runKey);
+  encoded.append("start_date", startDate.toISOString());
+  encoded.append("data", JSON.stringify(data));
+
+  let xhr = new XMLHttpRequest();
+  xhr.open("POST", "http://127.1:5000/submit", true);
+  xhr.send(encoded);
+
+  lastSubmission = Date.now();
+
+  console.log("end submit");
+}
+
+function submitFile(key, file) {
+  let data = new FormData();
+  data.append("run_key", runKey);
+  data.append("key", key + "(file)");
+  data.append("timestamp", Date.now());
+  data.append("file", file);
+
+  let xhr = new XMLHttpRequest();
+  xhr.open("POST", "http://127.1:5000/file", true);
+  xhr.send(data);
+}
+
+async function submitMemoryReport() {
+  console.log("begin memory report submit");
+
+  let memReportFile = await browser.runtime.sendMessage({type: "MemoryReport"});
+  submitFile("memory-report", memReportFile);
+
+  console.log("end memory report submit");
+
+  lastMemoryReport = Date.now();
+}
+
+async function submitGCLogs() {
+  console.log("begin GC log submit");
+
+  let dumps = await browser.runtime.sendMessage({type: "GCLogs"});
+  dumps.forEach((dump, i) => {
+    if (i == 0) {
+      submitFile("main-gc-log", dumps[i][0]);
+      submitFile("main-cc-log", dumps[i][1]);
+    } else {
+      submitFile(`content-gc-log-${i}`, dumps[i][0]);
+      submitFile(`content-cc-log-${i}`, dumps[i][1]);
+    }
+  });
+
+  console.log("end GC log submit");
+}
+
+// Warning: it seems like something is going wrong with symbolication
+// here.
+async function submitProfile() {
+  console.log("begin profile submit");
+
+  let profile = await browser.runtime.sendMessage({type: "Profile"});
+  submitFile("profile", profile);
+
+  console.log("end profile submit");
+}
 
 async function loadComplete(tab) {
   let resolveLoad;
@@ -8,7 +110,7 @@ async function loadComplete(tab) {
 
   function updateListener(tabId, change, tab) {
     if (change.status == "complete" && tabId == tab.id && tab.url != "about:blank") {
-      console.log("load complete");
+      log("load complete");
       resolveLoad();
     }
   }
@@ -20,7 +122,7 @@ async function loadComplete(tab) {
   if (tab.status != "complete" || tab.url == "about:blank") {
     await Promise.race([load, timeout]);
   } else {
-    console.log("load already complete!");
+    log("load already complete!");
   }
 
   browser.tabs.onUpdated.removeListener(updateListener);
@@ -30,6 +132,8 @@ let urls = new Set();
 let strings = new Set();
 
 function garbageCollect() {
+  log("garbageCollect");
+
   urls = new Set([
     "http://nytimes.com",
     "http://en.wikipedia.org",
@@ -60,13 +164,13 @@ async function queryTabs(filter = {}) {
 async function clickLinkAction() {
   let tabs = await browser.tabs.query({active: true, windowId: testWindow.id});
   let tab = tabs[0];
-  console.log("clickLinkAction", tab.url);
+  log("clickLinkAction", tab.url);
   browser.tabs.sendMessage(tab.id, {type: "click"});
 
   await new Promise(resolve => setTimeout(resolve, 50));
   await loadComplete(tab);
 
-  console.log("clickLinkAction complete");
+  log("clickLinkAction complete");
 }
 
 async function scrollAction() {
@@ -76,46 +180,46 @@ async function scrollAction() {
 
   let tabs = await browser.tabs.query({active: true, windowId: testWindow.id});
   let tab = tabs[0];
-  console.log("scrollAction", tab.url);
+  log("scrollAction", tab.url);
   browser.tabs.executeScript(tab.id, {code: `window.scrollBy(0, ${amt});`});
-  console.log("scrollAction complete");
+  log("scrollAction complete");
 }
 
 async function switchTabAction() {
   let tabs = await queryTabs();
   let tab = choose(tabs.map(t => [t, 1]));
-  console.log("switchTabAction", tab.url);
+  log("switchTabAction", tab.url);
   await browser.tabs.update(tab.id, {active: true});
 }
 
 async function openTabAction() {
   let url = choose([...urls].map(u => [u, 1]));
-  console.log("openTabAction", url);
+  log("openTabAction", url);
 
   let tab = await browser.tabs.create({url: url, active: true, windowId: testWindow.id});
   await loadComplete(tab);
 
-  console.log("openTabAction complete");
+  log("openTabAction complete");
 }
 
 async function searchAction() {
   let string = choose([...strings].map(s => [s, 1]));
   let url = `https://www.google.com/search?q=${encodeURIComponent(string)}`;
-  console.log("searchAction", url);
+  log("searchAction", url);
   let tab = await browser.tabs.create({url: url, active: true, windowId: testWindow.id});
   await loadComplete(tab);
-  console.log("searchAction complete");
+  log("searchAction complete");
 }
 
 async function closeTabAction() {
   let tabs = await queryTabs({pinned: false});
   let tab = choose(tabs.map(t => [t, 1]));
-  console.log("Closing tab", tab.url);
-  browser.tabs.remove(tab.id);
+  log("Closing tab", tab.url);
+  await browser.tabs.remove(tab.id);
 }
 
 async function act() {
-  console.log("act!");
+  log("act!");
 
   let options = [
     [scrollAction, 75],
@@ -136,15 +240,24 @@ async function act() {
     options.push([searchAction, 1]);
   }
 
-  console.log(options);
-
   let option = choose(options);
 
-  console.log(option);
-
-  await option();
+  try {
+    await option();
+  } catch (e) {
+    logError(e);
+    await submit();
+  }
 
   if (running) {
+    if (Date.now() - lastSubmission > 60 * 1000) {
+      await submit();
+    }
+
+    if (Date.now() - lastMemoryReport > 10 * 60 * 1000) {
+      await submitMemoryReport();
+    }
+
     setTimeout(act, 100);
   }
 }
@@ -168,6 +281,8 @@ browser.browserAction.onClicked.addListener(() => {
 
 async function startTesting() {
   if (!testWindow) {
+    startDate = new Date();
+
     testWindow = await browser.windows.create({url: [
       "https://gmail.com",
       "https://facebook.com",
@@ -178,15 +293,15 @@ async function startTesting() {
     let tabs = await browser.tabs.query({windowId: testWindow.id});
     for (let i = 0; i < 2; i++) {
       await browser.tabs.update(tabs[i].id, {pinned: true});
-      console.log("awaiting tab", tabs[i]);
+      log("awaiting tab", tabs[i]);
       await loadComplete(tabs[i]);
     }
   }
 
-  console.log("finished loading new window");
+  log("finished loading new window");
 
-  console.log("links", urls);
-  console.log("strings", strings);
+  log("links", urls);
+  log("strings", strings);
 
   running = true;
   act();
