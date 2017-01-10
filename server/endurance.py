@@ -17,7 +17,7 @@ app.config.update(dict(
     SECRET_KEY='development key',
     USERNAME='admin',
     PASSWORD='default',
-    UPLOAD_FOLDER='uploaded_files'
+    UPLOAD_FOLDER=os.path.join(app.root_path, 'uploaded_files')
 ))
 app.config.from_envvar('ENDURANCE_SETTINGS', silent=True)
 
