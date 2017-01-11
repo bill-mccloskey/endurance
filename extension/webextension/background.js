@@ -7,6 +7,7 @@ let startDate;
 
 let lastSubmission = Date.now();
 let lastMemoryReport = Date.now();
+let lastGarbageCollect = Date.now();
 
 const submissionURL = "http://52.32.131.4"
 
@@ -155,6 +156,8 @@ function garbageCollect() {
   }
 
   strings = newStrings;
+
+  lastGarbageCollect = Date.now();
 }
 
 async function queryTabs(filter = {}) {
@@ -260,16 +263,16 @@ async function act() {
       await submitMemoryReport();
     }
 
+    if (Date.now() - lastGarbageCollect > 5 * 60 * 1000) {
+      garbageCollect();
+    }
+
     setTimeout(act, 100);
   }
 }
 
 browser.runtime.onMessage.addListener((msg, sender) => {
   if (msg.type == "links") {
-    if (urls.size > 5000 || strings.size > 5000) {
-      garbageCollect();
-    }
-
     for (let [href, string] of msg.links) {
       urls.add(href);
       strings.add(string);
