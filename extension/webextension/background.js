@@ -152,7 +152,7 @@ function garbageCollect() {
 
   for (let i = 0; i < 250; i++) {
     let string = choose([...strings].map(s => [s, 1]));
-    newStrings.push(string);
+    newStrings.add(string);
   }
 
   strings = newStrings;
@@ -223,6 +223,10 @@ async function closeTabAction() {
   await browser.tabs.remove(tab.id);
 }
 
+function isLoggedIn(tab) {
+  return tab.url.includes("facebook.com") || tab.url.includes("mail.google.com");
+}
+
 async function act() {
   log("act!");
 
@@ -232,7 +236,7 @@ async function act() {
   ];
 
   let active = await browser.tabs.query({active: true, windowId: testWindow.id});
-  if (!active[0].pinned) {
+  if (!active[0].pinned && !isLoggedIn(active[0])) {
     options.push([clickLinkAction, 10]);
   }
 
