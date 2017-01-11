@@ -8,6 +8,8 @@ let startDate;
 let lastSubmission = Date.now();
 let lastMemoryReport = Date.now();
 
+const submissionURL = "http://52.32.131.4"
+
 function log(...args) {
   console.log(...args);
   logEntries.push(args);
@@ -45,7 +47,7 @@ async function submit() {
   encoded.append("data", JSON.stringify(data));
 
   let xhr = new XMLHttpRequest();
-  xhr.open("POST", "http://127.1:5000/submit", true);
+  xhr.open("POST", submissionURL + "/submit", true);
   xhr.send(encoded);
 
   lastSubmission = Date.now();
@@ -61,7 +63,7 @@ function submitFile(key, file) {
   data.append("file", file);
 
   let xhr = new XMLHttpRequest();
-  xhr.open("POST", "http://127.1:5000/file", true);
+  xhr.open("POST", submissionURL + "/file", true);
   xhr.send(data);
 }
 
