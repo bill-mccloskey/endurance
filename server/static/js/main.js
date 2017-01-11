@@ -17,7 +17,7 @@ function getTrace(selector) {
 
     let xhr = new XMLHttpRequest();
     xhr.onload = listener;
-    xhr.open("GET", "http://127.1:5000/data?selector=" + selector, true);
+    xhr.open("GET", "/data?selector=" + selector, true);
     xhr.send();
   });
 }
