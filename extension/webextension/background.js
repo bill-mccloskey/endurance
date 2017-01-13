@@ -131,13 +131,13 @@ async function loadComplete(tab) {
   browser.tabs.onUpdated.removeListener(updateListener);
 }
 
-let urls = new Set();
-let strings = new Set();
+let urls = [];
+let strings = [];
 
 function garbageCollect() {
   log("garbageCollect");
 
-  urls = new Set([
+  urls = [
     "http://nytimes.com",
     "http://en.wikipedia.org",
     "http://imdb.com",
@@ -146,13 +146,13 @@ function garbageCollect() {
     "http://youtube.com",
     "http://yahoo.com",
     "http://reddit.com",
-  ]);
+  ];
 
-  let newStrings = new Set();
+  let newStrings = [];
 
   for (let i = 0; i < 250; i++) {
-    let string = choose([...strings].map(s => [s, 1]));
-    newStrings.add(string);
+    let string = chooseUniform(strings);
+    newStrings.push(string);
   }
 
   strings = newStrings;
@@ -180,7 +180,7 @@ async function clickLinkAction() {
 
 async function scrollAction() {
   let amt = choose([[5, 1], [10, 1], [20, 10], [50, 10], [100, 20], [500, 10], [1000, 5]]);
-  let direction = choose([[1, 1], [-1, 1]]);
+  let direction = chooseUniform([1, -1]);
   amt *= direction;
 
   let tabs = await browser.tabs.query({active: true, windowId: testWindow.id});
@@ -192,13 +192,13 @@ async function scrollAction() {
 
 async function switchTabAction() {
   let tabs = await queryTabs();
-  let tab = choose(tabs.map(t => [t, 1]));
+  let tab = chooseUniform(tabs);
   log("switchTabAction", tab.url);
   await browser.tabs.update(tab.id, {active: true});
 }
 
 async function openTabAction() {
-  let url = choose([...urls].map(u => [u, 1]));
+  let url = chooseUniform(urls);
   log("openTabAction", url);
 
   let tab = await browser.tabs.create({url: url, active: true, windowId: testWindow.id});
@@ -208,7 +208,7 @@ async function openTabAction() {
 }
 
 async function searchAction() {
-  let string = choose([...strings].map(s => [s, 1]));
+  let string = chooseUniform(strings);
   let url = `https://www.google.com/search?q=${encodeURIComponent(string)}`;
   log("searchAction", url);
   let tab = await browser.tabs.create({url: url, active: true, windowId: testWindow.id});
@@ -218,7 +218,7 @@ async function searchAction() {
 
 async function closeTabAction() {
   let tabs = await queryTabs({pinned: false});
-  let tab = choose(tabs.map(t => [t, 1]));
+  let tab = chooseUniform(tabs);
   log("Closing tab", tab.url);
   await browser.tabs.remove(tab.id);
 }
@@ -278,8 +278,8 @@ async function act() {
 browser.runtime.onMessage.addListener((msg, sender) => {
   if (msg.type == "links") {
     for (let [href, string] of msg.links) {
-      urls.add(href);
-      strings.add(string);
+      urls.push(href);
+      strings.push(string);
     }
   }
 });

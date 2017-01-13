@@ -8,3 +8,8 @@ function choose(weights) {
     }
   }
 }
+
+function chooseUniform(items) {
+  let index = Math.floor(Math.random() * items.length);
+  return items[index];
+}
