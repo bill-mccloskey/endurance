@@ -101,6 +101,14 @@ async function profile() {
   return File.createFromNsIFile(file);
 }
 
+async function getConfiguration() {
+  return {
+    autostart: Preferences.get("endurance.autostart", false),
+    serverUrl: Preferences.get("endurance.serverUrl", "http://52.32.131.4"),
+    runKey: Preferences.get("endurance.runKey", String(Math.random())),
+  };
+}
+
 function startup(data) {
   oldPrintPref = Preferences.get("dom.disable_window_print", false);
   Preferences.set("dom.disable_window_print", true);
@@ -115,7 +123,10 @@ function startup(data) {
   webExtension.startup().then(api => {
     const {browser} = api;
     browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-      if (msg.type == "GetStatistics") {
+      if (msg.type == "GetConfiguration") {
+        getConfiguration().then(result => sendResponse(result));
+        return true;
+      } else if (msg.type == "GetStatistics") {
         getStatistics(msg.hangThreshold).then(result => sendResponse(result));
         return true;
       } else if (msg.type == "MemoryReport") {

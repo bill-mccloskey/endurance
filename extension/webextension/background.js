@@ -2,14 +2,16 @@ let testTab = null;
 let testWindow = null;
 let running = false;
 let logEntries = [];
-let runKey = Math.random();
+let runKey;
 let startDate;
 
 let lastSubmission = Date.now();
 let lastMemoryReport = Date.now();
 let lastGarbageCollect = Date.now();
 
-const submissionURL = "http://52.32.131.4"
+let submittedGCLogs = false;
+
+let submissionURL;
 
 function log(...args) {
   console.log(...args);
@@ -54,6 +56,19 @@ async function submit() {
   lastSubmission = Date.now();
 
   console.log("end submit");
+
+  if (!submittedGCLogs) {
+    // If a content process is getting out of control, submit GC/CC
+    // logs.
+    for (let i = 1; i < stats.length; i++) {
+      if (stats[i].residentUnique >= 2 * 1000 * 1000 * 1000 ||
+          stats[i].ghostWindows >= 100)
+      {
+        submitGCLogs();
+        submittedGCLogs = true;
+      }
+    }
+  }
 }
 
 function submitFile(key, file) {
@@ -276,6 +291,10 @@ async function act() {
 }
 
 browser.runtime.onMessage.addListener((msg, sender) => {
+  if (sender.tab.windowId != testWindow.id) {
+    return;
+  }
+
   if (msg.type == "links") {
     for (let [href, string] of msg.links) {
       urls.push(href);
@@ -319,3 +338,19 @@ async function startTesting() {
 function stopTesting() {
   running = false;
 }
+
+function isRunning() {
+  return running;
+}
+
+async function startup() {
+  let config = await browser.runtime.sendMessage({type: "GetConfiguration"});
+  submissionURL = config.serverUrl;
+  runKey = config.runKey;
+
+  if (config.autostart) {
+    startTesting();
+  }
+}
+
+startup();

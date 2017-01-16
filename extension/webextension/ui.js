@@ -1,10 +1,16 @@
-let running = false;
+let bg = browser.extension.getBackgroundPage();
+let running = bg.isRunning();
+
+function updateButton() {
+  document.getElementById("start").innerHTML = running ? "Stop test" : "Start test";
+}
+
+updateButton();
 
 function clicked() {
   running = !running;
-  document.getElementById("start").innerHTML = running ? "Stop test" : "Start test";
+  updateButton();
 
-  let bg = browser.extension.getBackgroundPage();
   if (running) {
     bg.startTesting();
   } else {

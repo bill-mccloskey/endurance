@@ -21,5 +21,11 @@
   "content_scripts": [{
     "matches": ["<all_urls>"],
     "js": ["lib.js", "collect-links.js"]
+  }, {
+    "matches": ["https://accounts.google.com/*"],
+    "js": ["lib.js", "google-login.js"]
+  }, {
+    "matches": ["https://www.facebook.com/*"],
+    "js": ["lib.js", "facebook-login.js"]
   }]
 }
