@@ -1,10 +1,12 @@
 const {utils: Cu, interfaces: Ci, classes: Cc} = Components;
 
 Cu.import("resource://gre/modules/Services.jsm");
+Cu.import("resource://gre/modules/Preferences.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.importGlobalProperties(["File"]);
 
 let version, processScriptURL;
+let oldPrintPref;
 
 function getStatistics(hangThreshold) {
   let resolve;
@@ -100,6 +102,9 @@ async function profile() {
 }
 
 function startup(data) {
+  oldPrintPref = Preferences.get("dom.disable_window_print", false);
+  Preferences.set("dom.disable_window_print", true);
+
   let {resourceURI} = data;
   version = Math.random();
   processScriptURL = resourceURI.resolve("processScript.js");
@@ -128,6 +133,8 @@ function startup(data) {
 }
 
 function shutdown() {
+  Preferences.set("dom.disable_window_print", oldPrintPref);
+
   Services.ppmm.broadcastAsyncMessage("Endurance:Shutdown", version);
   Services.ppmm.removeDelayedProcessScript(processScriptURL, true);
 }
